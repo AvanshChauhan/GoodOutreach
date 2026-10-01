@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import path from 'path';
 import { connectDatabase } from './config/database';
 import { config } from './config';
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -23,9 +22,19 @@ app.use(
     contentSecurityPolicy: false, // Allow inline styles & fonts in production bundle
   })
 );
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5000',
+  ...(config.clientUrl ? [config.clientUrl] : []),
+];
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, Postman, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    },
     credentials: true,
   })
 );
@@ -64,15 +73,8 @@ app.use('/api/personalization', personalizationRoutes);
 app.use('/api/outreach', outreachRoutes);
 app.get('/api/dashboard/stats', getDashboardStats);
 
-// Production single-server static frontend bundle serving
-if (config.nodeEnv === 'production') {
-  const clientBuildPath = path.join(__dirname, '../../client/dist');
-  app.use(express.static(clientBuildPath));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) return next();
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
-  });
-}
+// Static serving removed: on Vercel, routing is handled by vercel.json rewrites.
+// On Render/single-server, re-add static serving here if needed.
 
 // 404 + error handlers
 app.use(notFound);
