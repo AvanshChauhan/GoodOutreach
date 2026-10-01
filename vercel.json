@@ -9,7 +9,7 @@
     },
     "server": {
       "root": "server",
-      "framework": null,
+      "framework": "express",
       "buildCommand": "npm install && npm run build",
       "runtime": "nodejs20.x",
       "entrypoint": "dist/app.js"
